@@ -14,14 +14,14 @@ void CTkgame::create(account_name issuer,
                      asset maximum_supply)
 {
     require_auth(_self);
-	ckx_http();
+	//ckx_http();
 
     auto sym = maximum_supply.symbol;
     eosio_assert(sym.is_valid(), "invalid symbol name");
     eosio_assert(maximum_supply.is_valid(), "invalid supply");
     //printi(maximum_supply.amount);
    
- 	eosio_assert( maximum_supply == asset(10000000000000, string_to_symbol(4,"TKCOINB")), "max-supply must be 1 billion TKCOINB and with 4 decision");
+ 	eosio_assert( maximum_supply == asset(10000000000000, string_to_symbol(4,"TKCOIN")), "max-supply must be 1 billion TKCOIN and with 4 decision");
 
     stats statstable(_self, sym.name());
     auto existing = statstable.find(sym.name());
@@ -35,8 +35,13 @@ void CTkgame::create(account_name issuer,
 
 void CTkgame::issue(account_name to, asset quantity, string memo)
 {
-    eosio_assert(to != string_to_name(m_contract.c_str()), "cannot issue to tkcoin");
-    auto sym = quantity.symbol;
+    eosio_assert(to != string_to_name(m_contract.c_str()), "cannot issue to tktkcointkcoincoin");
+	eosio_assert(to == string_to_name(m_team.c_str()) ||
+		to == string_to_name(m_community.c_str()) ||
+		to == string_to_name(m_investor.c_str()) ||
+		to == string_to_name(m_mine.c_str()),"must issue to tkcointeamxm,or foundationxm, or footingstone, or tkcoinminexm");
+
+	auto sym = quantity.symbol;
     eosio_assert(sym.is_valid(), "invalid symbol name");
     eosio_assert(memo.size() <= 256, "memo has more than 256 bytes");
 
@@ -80,15 +85,52 @@ void CTkgame::transfer(account_name from,
     require_auth(from);
     if (from != string_to_name(m_contract.c_str()))
     {
-        eosio_assert(to != string_to_name(m_team.c_str()), "cannot transfer to team");
-        eosio_assert(to != string_to_name(m_community.c_str()), "cannot transfer to community");
-        eosio_assert(to != string_to_name(m_investor.c_str()), "cannot transfer to investor");
-        eosio_assert(to != string_to_name(m_mine.c_str()), "cannot transfer to mine");
+        eosio_assert(to != string_to_name(m_team.c_str()), "cannot transfer to tkcointeamxm");
+        eosio_assert(to != string_to_name(m_community.c_str()), "cannot transfer to foundationxm");
+        eosio_assert(to != string_to_name(m_investor.c_str()), "cannot transfer to footingstone");
+        eosio_assert(to != string_to_name(m_mine.c_str()), "cannot transfer to tkcoinminexm");
 
-        eosio_assert(to != string_to_name(m_contract.c_str()), "cannot transfer to tkcoin");
+        eosio_assert(to != string_to_name(m_contract.c_str()), "cannot transfer to tkcointkcoin");
     }
 
     eosio_assert(is_account(to), "to account does not exist");
+
+	if (to == string_to_name(m_unlock.c_str()))
+	{
+		eosio_assert(from == string_to_name(m_team.c_str()),"transfer to teamunlockxm must from tkcointeamxm");
+	}
+
+	if (to == string_to_name(m_remain.c_str()))
+	{
+	    string str1="rc-";
+		int ret = memo.compare(0,2,str1,0,2);
+		if(ret != 0)
+		{
+		    eosio_assert(from == string_to_name(m_community.c_str()) ||
+			    from == string_to_name(m_mine.c_str()),"transfer to remainingsum must from foundationxm or tkcoinminexm");
+		}
+	}
+
+	if (to == string_to_name(m_provision.c_str()))
+	{
+		eosio_assert(from == string_to_name(m_remain.c_str()),"transfer to tkcprovision must from remainingsum");
+	}
+
+	if (to == string_to_name(m_retrieve.c_str()))
+	{
+		eosio_assert(from == string_to_name(m_remain.c_str()),"transfer to coinretrieve must from remainingsum");
+	}
+
+	if (to == string_to_name(m_dig.c_str()))
+	{
+		eosio_assert(from == string_to_name(m_mine.c_str()),"transfer to authoritydig must from tkcoinminexm");
+	}
+
+	/*if (to == string_to_name(m_operate.c_str()))
+	{
+		eosio_assert(from == string_to_name(m_team.c_str()),"transfer to tkcoperatexm must from tkcointeamxm");
+	}*/
+	
     auto sym = quantity.symbol.name();
     stats statstable(_self, sym);
     const auto &st = statstable.get(sym);
@@ -103,16 +145,6 @@ void CTkgame::transfer(account_name from,
 
     sub_balance(from, quantity);
     add_balance(to, quantity, from);
-    tktrans_rec tktransrec(_self, _self);
-    auto datetime = current_time();
-    //printui(datetime);
-    tktransrec.emplace(_self, [&](auto &a) {
-        a.id = tktransrec.available_primary_key(); // ��������
-        a.from = from;
-        a.to = to;
-        a.balance = quantity;
-        a.datetime = datetime;
-    });
 }
 
 
@@ -133,15 +165,7 @@ void CTkgame::sub_balance(account_name owner, asset value)
             a.balance -= value;
         });
     }
-	if(owner == string_to_name(m_contract.c_str()))
-		return;
-	tkaccount_list acclist(_self,_self);
-	auto datetime = current_time();
-	const auto &from2 = acclist.get(owner, "account list no object found");
-	acclist.modify(from2, owner, [&](auto &a) {
-		a.balance -= value;
-		a.datetime = datetime;
-	});
+	
 }
 
 void CTkgame::add_balance(account_name owner, asset value, account_name ram_payer)
@@ -161,111 +185,6 @@ void CTkgame::add_balance(account_name owner, asset value, account_name ram_paye
         });
     }
 
-	tkaccount_list acclist(_self,_self);
-	auto to2 = acclist.find(owner);
-	auto datetime = current_time();
-	if (to2 == acclist.end())
-	{
-	    if(owner == string_to_name(m_contract.c_str()))
-		    return;
-		acclist.emplace(ram_payer,[&](auto &a) {
-			a.name = owner;
-			a.balance = value;
-			a.datetime = datetime;
-			if(owner == string_to_name(m_team.c_str())
-				||owner == string_to_name(m_community.c_str())
-				||owner == string_to_name(m_investor.c_str())
-				||owner == string_to_name(m_mine.c_str()))
-				a.super_symbol = 1;
-		});
-	}
-	else
-	{
-		acclist.modify(to2, 0, [&](auto &a) {
-		    a.balance += value;
-		    a.datetime = datetime;
-	    });
-	}
-	
-}
-
-void CTkgame::setsuperuser(account_name name)
-{
-	require_auth(_self);
-	eosio_assert(is_account(name), "the account does not exist");
-	tkaccount_list acclist(_self,_self);
-	auto to = acclist.find(name);
-	if(to != acclist.end())
-	{
-		acclist.modify(to, _self, [&](auto &a) {
-		    a.super_symbol=1;
-	    });
-	}
-}
-
-void CTkgame::deletedata()
-{
-    require_auth(_self);
-	char ckxoutput[1024] = "hello";
-	print("Begin deletedata \n");
-	//ckx_call("https://mainnet.eoscannon.io", 0, "/v1/chain/get_info", 0, ckxoutput, 0);
-	ckx_call("http://nodes.get-scatter.com:80", 0, "/v1/chain/get_info", 0, ckxoutput, 0);
-	prints(ckxoutput);
-	//print("contract output:");
-	//prints_l(ckxoutput,1024);
-	//print("\n");
-	return;
-	//print("m_symbol is:",m_symbol.name(),"\n");
-	stats statstable(_self, m_symbol.name());
-	auto existing = statstable.find(m_symbol.name());
-	if(existing != statstable.end())
-	{
-		statstable.erase(existing);
-	}
-	accounts sysname1(_self, string_to_name(m_team.c_str()));
-	auto e1 = sysname1.find(m_symbol.name());
-	if(e1 != sysname1.end())
-	{
-		sysname1.erase(e1);
-	}
-	accounts sysname2(_self, string_to_name(m_community.c_str()));
-	auto e2 = sysname2.find(m_symbol.name());
-	if(e2 != sysname2.end())
-	{
-		sysname2.erase(e2);
-	}
-	accounts sysname3(_self, string_to_name(m_investor.c_str()));
-	auto e3 = sysname3.find(m_symbol.name());
-	if(e3 != sysname3.end())
-	{
-		sysname3.erase(e3);
-	}
-	accounts sysname4(_self, string_to_name(m_mine.c_str()));
-	auto e4 = sysname4.find(m_symbol.name());
-	if(e4 != sysname4.end())
-	{
-		sysname4.erase(e4);
-	}
-	//tktrans;
-	tktrans_rec tktransrec(_self, _self);
-	
-	while(1)
-	{
-	    auto it1 = tktransrec.begin();
-		if(it1 == tktransrec.end())
-			break;
-		tktransrec.erase(it1);
-	}
-	print("enter deletedata17 !!!!!!!!!\n");
-	//tkaccount;
-	tkaccount_list acclist(_self,_self);
-	while(1)
-	{
-	    auto it2 = acclist.begin();
-		if(it2 == acclist.end())
-			break;
-		acclist.erase(it2);
-	}
 }
 
 } // namespace eosio

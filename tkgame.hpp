@@ -21,12 +21,20 @@ namespace eosio {
       public:
          CTkgame( account_name self ):contract(self)
 		 {
-		     m_contract = "tkcoin";
-		     m_team = "team";
-			 m_community = "community";
-			 m_investor = "investor";
-			 m_mine = "mine";
-			 m_symbol = string_to_symbol(4,"TKCOINB");
+		     m_contract = "tkcointkcoin";
+		     m_team = "tkcointeamxm";
+			 m_community = "foundationxm";
+			 m_investor = "footingstone";
+			 m_mine = "tkcoinminexm";
+
+			 m_unlock = "teamunlockxm";
+			 m_remain = "remainingsum";
+			 m_provision = "tkcprovision";
+			 m_retrieve = "coinretrieve";
+			 m_dig = "authoritydig";
+			 m_operate = "tkcoperatexm";
+			 	
+			 m_symbol = string_to_symbol(4,"TKCOIN");
 		 }
 		 
          void create( account_name issuer,
@@ -62,31 +70,11 @@ namespace eosio {
             uint64_t primary_key()const { return supply.symbol.name(); }
          };
 
-         //@abi table tktrans i64
-         struct transfer_rec {
-		 	uint64_t id;
-		 	account_name from;
-			account_name to;
-			asset balance;
-			uint64_t datetime;
-
-			uint64_t primary_key() const { return id; }
-         };
-
-		 //@abi table tkaccount i64
-		 struct account_list{
-		    account_name name;
-			asset balance;
-			uint8_t super_symbol=0;
-			uint64_t datetime;
-
-			uint64_t primary_key() const {return name; }
-		 };
+         
 		 
 		 typedef eosio::multi_index<N(accounts), account> accounts;
          typedef eosio::multi_index<N(stat), currency_stat> stats;
-		 typedef eosio::multi_index<N(tktrans), transfer_rec> tktrans_rec;
-		 typedef eosio::multi_index<N(tkaccount), account_list> tkaccount_list; 
+		 
 
          void sub_balance( account_name owner, asset value );
          void add_balance( account_name owner, asset value, account_name ram_payer );
@@ -97,6 +85,14 @@ namespace eosio {
 		 string m_community;
 		 string m_investor;
 		 string m_mine;
+
+		 string m_unlock;
+		 string m_remain;
+		 string m_provision;
+		 string m_retrieve;
+		 string m_dig;
+		 string m_operate;
+		 
 		 symbol_type m_symbol;
       public:
          struct transfer_args {
@@ -122,5 +118,5 @@ namespace eosio {
    }
 
 } /// namespace eosio
-EOSIO_ABI(eosio::CTkgame, (create)(issue)(transfer)(setsuperuser)(deletedata))
+EOSIO_ABI(eosio::CTkgame, (create)(issue)(transfer))
 
